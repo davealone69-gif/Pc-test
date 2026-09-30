@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>Pc-test | 3D Avatar Studio</title>
+  <script src="https://cdn.babylonjs.com/babylon.js"></script>
+  <script src="https://cdn.babylonjs.com/loaders/babylonjs.loaders.min.js"></script>
+  <style>
+    :root{font-family:Segoe UI,Arial,sans-serif;background:#111;color:#eee}
+    *{box-sizing:border-box}body{margin:0;background:#111;min-height:100vh}
+    header{padding:12px 16px;border-bottom:1px solid #333;display:flex;justify-content:space-between;gap:12px;align-items:center}
+    h1{font-size:18px;margin:0}.status{font-size:12px;color:#9f9}.layout{display:grid;grid-template-columns:minmax(0,1fr) 300px;height:calc(100vh - 51px)}
+    #renderCanvas{width:100%;height:100%;display:block;touch-action:none;background:#181818}
+    aside{padding:14px;border-left:1px solid #333;overflow:auto}.panel{border:1px solid #333;border-radius:8px;padding:12px;margin-bottom:12px;background:#181818}
+    label{display:block;font-size:12px;color:#aaa;margin:10px 0 4px}input,button,select{width:100%;min-height:40px;border:1px solid #444;border-radius:6px;background:#222;color:#eee;padding:8px}
+    button{cursor:pointer}button:hover{background:#2b2b2b}.drop{border:1px dashed #666;padding:16px;text-align:center;border-radius:8px;color:#aaa}
+    .hidden{display:none}.gate{position:fixed;inset:0;background:rgba(0,0,0,.94);display:grid;place-items:center;z-index:10;padding:20px}
+    .gate-card{max-width:460px;border:1px solid #444;background:#181818;border-radius:12px;padding:24px}.gate-card button{margin-top:10px}
+    .notice{font-size:12px;color:#aaa;line-height:1.45}.danger{color:#f5b5b5}
+    @media(max-width:800px){.layout{grid-template-columns:1fr;height:auto}.layout aside{border-left:0;border-top:1px solid #333}.layout canvas{height:60vh}}
+  </style>
+</head>
+<body>
+<div id="gate" class="gate">
+  <section class="gate-card">
+    <h2>18+ 3D Avatar Studio</h2>
+    <p>This application is intended for adults 18 years and over. It provides a 3D avatar viewer and profile manager.</p>
+    <p class="notice">This foundation does not generate explicit sexual content and does not include a fake generation service.</p>
+    <button id="enterBtn" type="button">I am 18 or older</button>
+    <button id="leaveBtn" type="button">Exit</button>
+  </section>
+</div>
+
+<header><h1>Pc-test • 3D Avatar Studio</h1><span id="engineStatus" class="status">Starting viewer…</span></header>
+<main class="layout">
+  <canvas id="renderCanvas" aria-label="3D avatar viewer"></canvas>
+  <aside>
+    <div class="panel">
+      <strong>Avatar profile</strong>
+      <label for="name">Name</label><input id="name" maxlength="60" placeholder="Avatar name">
+      <label for="description">Description</label><input id="description" maxlength="160" placeholder="Persona description">
+      <button id="saveBtn" type="button">Save profile</button>
+    </div>
+    <div class="panel">
+      <strong>Real model</strong>
+      <p class="notice">Load a model you actually own or have permission to use.</p>
+      <div id="drop" class="drop">Drop GLB / GLTF / OBJ / STL here<br>or choose a file</div>
+      <input id="fileInput" class="hidden" type="file" accept=".glb,.gltf,.bin,.obj,.stl">
+      <button id="chooseBtn" type="button" style="margin-top:8px">Choose model</button>
+      <button id="clearBtn" type="button" style="margin-top:8px">Clear model</button>
+    </div>
+    <div class="panel">
+      <strong>Viewer</strong>
+      <button id="resetBtn" type="button" style="margin-top:8px">Reset camera</button>
+      <p id="modelStatus" class="notice">No model loaded.</p>
+    </div>
+    <div class="panel">
+      <strong>Server</strong>
+      <p class="notice">No generation server is assumed or faked. A real endpoint can be connected in a later phase.</p>
+    </div>
+  </aside>
+</main>
+
+<script>
+(function(){
+  "use strict";
+  const gate=document.getElementById("gate"), canvas=document.getElementById("renderCanvas");
+  const engineStatus=document.getElementById("engineStatus"), modelStatus=document.getElementById("modelStatus");
+  const nameInput=document.getElementById("name"), descInput=document.getElementById("description");
+  let scene, camera, loadedNodes=[];
+
+  function setStatus(text){modelStatus.textContent=text}
+  function clearModel(){
+    loadedNodes.forEach(n=>{try{n.dispose()}catch(e){}});
+    loadedNodes=[]; setStatus("No model loaded.");
+  }
+  function resetCamera(){
+    if(!camera)return;
+    camera.setTarget(BABYLON.Vector3.Zero());
+    camera.alpha=Math.PI/2; camera.beta=Math.PI/2.4; camera.radius=3;
+  }
+  async function loadFile(file){
+    if(!file)return;
+    const ext=file.name.toLowerCase().split(".").pop();
+    if(!["glb","gltf","obj","stl"].includes(ext)){setStatus("Unsupported model format.");return}
+    clearModel();
+    const url=URL.createObjectURL(file);
+    try{
+      const result=await BABYLON.SceneLoader.ImportMeshAsync("", "", url, scene);
+      loadedNodes=result.meshes;
+      setStatus("Loaded real model: "+file.name);
+      resetCamera();
+    }catch(err){setStatus("Model load failed: "+(err&&err.message?err.message:"unknown error"))}
+    finally{URL.revokeObjectURL(url)}
+  }
+
+  document.getElementById("enterBtn").addEventListener("click",()=>{gate.classList.add("hidden")});
+  document.getElementById("leaveBtn").addEventListener("click",()=>{document.body.innerHTML="<main style='padding:40px;font-family:Arial'>You may close this window.</main>"});
+  document.getElementById("chooseBtn").addEventListener("click",()=>document.getElementById("fileInput").click());
+  document.getElementById("fileInput").addEventListener("change",e=>loadFile(e.target.files[0]));
+  document.getElementById("clearBtn").addEventListener("click",clearModel);
+  document.getElementById("resetBtn").addEventListener("click",resetCamera);
+  document.getElementById("saveBtn").addEventListener("click",()=>{
+    const name=nameInput.value.trim();
+    if(!name){modelStatus.textContent="Enter an avatar name first.";return}
+    const profiles=JSON.parse(localStorage.getItem("pc-test-profiles")||"[]");
+    profiles.push({name,description:descInput.value.trim(),savedAt:new Date().toISOString()});
+    localStorage.setItem("pc-test-profiles",JSON.stringify(profiles.slice(-50)));
+    modelStatus.textContent="Profile saved locally: "+name;
+  });
+  const drop=document.getElementById("drop");
+  ["dragenter","dragover"].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.style.borderColor="#aaa"}));
+  ["dragleave","drop"].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.style.borderColor="#666"}));
+  drop.addEventListener("drop",e=>loadFile(e.dataTransfer.files[0]));
+  drop.addEventListener("click",()=>document.getElementById("fileInput").click());
+
+  try{
+    const engine=new BABYLON.Engine(canvas,true,{preserveDrawingBuffer:false,stencil:true});
+    scene=new BABYLON.Scene(engine);
+    scene.clearColor=new BABYLON.Color4(.055,.055,.055,1);
+    camera=new BABYLON.ArcRotateCamera("camera",Math.PI/2,Math.PI/2.4,3,BABYLON.Vector3.Zero(),scene);
+    camera.attachControl(canvas,true); camera.wheelPrecision=80;
+    new BABYLON.HemisphericLight("light",new BABYLON.Vector3(0,1,0),scene);
+    engine.runRenderLoop(()=>scene.render());
+    window.addEventListener("resize",()=>engine.resize());
+    engineStatus.textContent="Babylon.js viewer ready";
+  }catch(err){engineStatus.textContent="Viewer failed to start";modelStatus.textContent=String(err)}
+})();
+</script>
+</body>
+</html>
