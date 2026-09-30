@@ -1,0 +1,24 @@
+name: Static Check
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate required files
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s index.html
+          test -s launch-pc.bat
+          test -s README.md
+          grep -q "BABYLON.Engine" index.html
+          grep -q "18+ 3D Avatar Studio" index.html
+          grep -q "ImportMeshAsync" index.html
+          echo "Static foundation checks passed."
